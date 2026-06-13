@@ -160,6 +160,9 @@ pub impl ServeStaticProvider for StaticFileProvider with get_contents(
                 "ETag",
                 static_asset_etag(mtime_sec, mtime_nsec, size),
               )
+              ignore <| get_file_extension(path)
+              .bind(mime_type_for_extension)
+              .map(content_type => headers.set("Content-Type", content_type))
               headers
             }
             _ => {}
@@ -308,4 +311,12 @@ pub impl ServeStaticProvider for StaticFileProvider with get_index_names(_) -> A
 /// for missing assets.
 pub impl ServeStaticProvider for StaticFileProvider with get_fallthrough(_) -> Bool {
   false
+}
+
+///|
+fn get_file_extension(path : String) -> String? {
+  match path.rev_split_once(".") {
+    Some((_, ext)) => Some(ext.to_owned())
+    _ => None
+  }
 }
