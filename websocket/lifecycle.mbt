@@ -281,6 +281,13 @@ pub async fn handle_route_async(
     group.spawn_bg(() => write_native_ws_outgoing(ws, outgoing))
     // Open fires exactly once, before the first Message.
     handler(Open(snapshot_native_ws_peer(connection_id, params)))
+
+    // Close still fires on the error path — paired with the Open above.
+    errdefer {
+      handler(Close(snapshot_native_ws_peer(connection_id, params)))
+      send_native_ws_shutdown_close(ws)
+    }
+
     for ;; {
       // recv_native_ws_message returns None on graceful close or read
       // timeout (it sends the appropriate close frame internally).
@@ -302,19 +309,8 @@ pub async fn handle_route_async(
     // Tell the writer task there will be no more messages. It drains
     // anything already enqueued, then exits, letting the group close.
     outgoing.close()
-  }) catch {
-    err => {
-      // Cancellation path (server shutdown): send a 1001 GoingAway close
-      // frame so clients see an orderly shutdown instead of a TCP reset.
-      // The close helper itself is cancel-protected.
-      if @async.is_cancellation_error(err) {
-        send_native_ws_shutdown_close(ws)
-      }
-      // Close still fires on the error path — paired with the Open above.
-      handler(Close(snapshot_native_ws_peer(connection_id, params)))
-      raise err
-    }
-  }
+  })
+
   // Normal-exit Close. Paired with the catch-path Close above, this ensures
   // Close fires exactly once per Open regardless of how the session ended.
   handler(Close(snapshot_native_ws_peer(connection_id, params)))

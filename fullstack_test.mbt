@@ -146,7 +146,7 @@ async test "full-stack: get nonexistent todo returns 404" {
 async test "full-stack: create todo with json body" {
   let client = @test_client.TestClient(build_todo_app())
   let input : CreateTodo = { title: "Write tests", }
-  let body = input.to_json().stringify()
+  let body = ToJson::to_json(input).stringify()
   let res = client.post("/api/todos", body=@utf8.encode(body))
   assert_eq(res.status, Created)
   let todo : Todo = res.body_json()
@@ -228,7 +228,7 @@ async test "full-stack: nested json with optional fields" {
     email: "bob@test.com",
     tags: ["user"],
   }
-  let body = @utf8.encode(profile.to_json().stringify())
+  let body = @utf8.encode(ToJson::to_json(profile).stringify())
   let res = client.post("/api/profile", body~)
   assert_eq(res.status, OK)
   let result : UserProfile = res.body_json()
@@ -319,7 +319,7 @@ async test "full-stack: event.json() shorthand parses request body" {
   })
   let client = @test_client.TestClient(app)
   let body = @utf8.encode(
-    ({ title: "Test shorthand", } : CreateTodo).to_json().stringify(),
+    ToJson::to_json(CreateTodo::{ title: "Test shorthand", }).stringify(),
   )
   let res = client.post("/api/todos", body~)
   assert_eq(res.status, Created)
